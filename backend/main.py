@@ -5,8 +5,24 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# Add parent directory to sys.path to enable backend package resolution
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Resolve import paths dynamically for both local dev and container environments
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
+
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
+try:
+    import backend
+except ModuleNotFoundError:
+    # Inside Docker/Render, the folder is cloned and run flat from /app (no 'backend' parent directory).
+    # We dynamically mock the 'backend' namespace to map imports directly to /app subfolders.
+    import types
+    backend_mock = types.ModuleType('backend')
+    backend_mock.__path__ = [current_dir]
+    sys.modules['backend'] = backend_mock
 
 from backend.routers import predict, drift, analytics, explain
 from backend.services.db_service import DBService
