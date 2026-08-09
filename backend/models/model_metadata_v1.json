@@ -1,7 +1,7 @@
 {
   "model_version": "1.0.0",
   "algorithm": "Logistic Regression",
-  "training_date": "2026-08-09 13:53:26",
+  "training_date": "2026-08-09 14:23:42",
   "feature_count": 14,
   "decision_threshold": 0.18818181818181817,
   "validation_metrics": {
@@ -13,7 +13,7 @@
   "test_metrics": {
     "roc_auc": 0.8091395917193791,
     "gini": 0.6182791834387582,
-    "brier_score": 0.11381169465651507,
+    "brier_score": 0.11381186930227058,
     "precision": 0.3694029850746269,
     "recall": 0.668918918918919,
     "f1": 0.47596153846153844

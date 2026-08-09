@@ -74,9 +74,14 @@ class ModelService:
         df = pd.DataFrame([full_data])
         df = df[self.features]
         
-        # Predict probability using calibrator
-        # Calibrator wraps the champion model and outputs calibrated probability
-        calibrated_prob = float(self.calibrator.predict_proba(df)[0, 1])
+        # Construct DMatrix for predictions and SHAP calculations
+        dmat = xgb.DMatrix(df)
+        
+        # Predict raw default probability using the native XGBoost booster
+        raw_prob = float(self.booster.predict(dmat)[0])
+        
+        # Calibrate probability using IsotonicRegression mapping
+        calibrated_prob = float(self.calibrator.predict(np.array([raw_prob]))[0])
         
         # Calculate risk score (UI scale: 0 to 100)
         risk_score = round(calibrated_prob * 100)
@@ -85,7 +90,6 @@ class ModelService:
         decision = "DECLINE" if calibrated_prob >= self.decision_threshold else "APPROVE"
         
         # Calculate TreeSHAP values using XGBoost
-        dmat = xgb.DMatrix(df)
         # predict(pred_contribs=True) returns [contribs_feature_1, ..., contribs_feature_k, bias]
         shap_values = self.booster.predict(dmat, pred_contribs=True)[0]
         feature_shap = shap_values[:-1] # Exclude bias term

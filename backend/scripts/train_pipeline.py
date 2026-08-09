@@ -6,7 +6,7 @@ from datetime import datetime
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.calibration import CalibratedClassifierCV, FrozenEstimator
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc, brier_score_loss, precision_score, recall_score, f1_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -407,13 +407,16 @@ def main():
     
     # Phase 6: Probability Calibration on Validation Set
     print("Performing probability calibration for the champion model...")
-    # Calibrated Classifier fits on Val set using FrozenEstimator wrapper for already-trained champion model
-    calibrator = CalibratedClassifierCV(estimator=FrozenEstimator(champion_model), method='isotonic')
-    calibrator.fit(X_val, y_val)
+    # Get raw probabilities from champion model
+    raw_probs = champion_model.predict_proba(X_val)[:, 1]
+    
+    # Fit standard IsotonicRegression directly
+    from sklearn.isotonic import IsotonicRegression
+    calibrator = IsotonicRegression(out_of_bounds='clip')
+    calibrator.fit(raw_probs, y_val)
     
     # Evaluate calibration quality
-    raw_probs = champion_model.predict_proba(X_val)[:, 1]
-    calibrated_probs = calibrator.predict_proba(X_val)[:, 1]
+    calibrated_probs = calibrator.predict(raw_probs)
     
     raw_brier = brier_score_loss(y_val, raw_probs)
     calibrated_brier = brier_score_loss(y_val, calibrated_probs)
@@ -438,7 +441,8 @@ def main():
     X_test = test_df[feature_cols]
     y_test = test_df['default_target']
     
-    test_probs = calibrator.predict_proba(X_test)[:, 1]
+    test_raw_probs = champion_model.predict_proba(X_test)[:, 1]
+    test_probs = calibrator.predict(test_raw_probs)
     test_preds = (test_probs >= best_threshold).astype(int)
     
     test_roc = roc_auc_score(y_test, test_probs)
